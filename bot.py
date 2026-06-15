@@ -14,7 +14,7 @@ OWNER_ID = 7676301555
 OWNER_USERNAME = "light_speedy"
 
 # Main bot token
-MAIN_BOT_TOKEN = "8776304610:AAFpTm36X1c2wsYJVLnrzYjbEjeAi_dt3rc"
+MAIN_BOT_TOKEN = "8601344819:AAE1nBCUJt74qq3i44Dl0l4r4_SBzcN0VIc"
 
 # Extra bots tokens (11 bots)
 EXTRA_BOTS_TOKEN = [
