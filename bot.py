@@ -14,29 +14,102 @@ print("🚀 Starting Midnight Manage Bot...")
 
 OWNER_ID = 7676301555
 OWNER_USERNAME = "light_speedy"
-BOT_TOKEN = "8601344819:AAFSVHu6g0Vh1AhBudIPaM9hwoY-oqEmoGk"
 
-# Premium emoji IDs (Buttons ke liye)
+# Main bot token (pehle wala)
+MAIN_BOT_TOKEN = "8601344819:AAFSVHu6g0Vh1AhBudIPaM9hwoY-oqEmoGk"
+
+# Extra bots tokens (11 bots - pehle wale)
+EXTRA_BOTS_TOKEN = [
+    "8443522015:AAHYBRq7_F80gNH0I9nAXpHHGoEfkj5NGxQ",
+    "8939942502:AAFXxqWXoupIEn_Q0IAd7Vtrb2aLzT9jzC8",
+    "8775011066:AAH_ZqYhh0JZMYhIUZ7NYeXCWzg5oQFpfUM",
+    "8996094741:AAEmZGsRI767EhNXOqq1MIHvkOVrOKrQ1WI",
+    "8667582125:AAFKGw7oavoUqQwUJwNreSGi9-XFbYc1nMg",
+    "8768157775:AAG3PVB7pEK4_h31B78a25REqnjw8KXfECU",
+    "8601323918:AAF-yIGxJAcJi8cixvkEU2NpBMzXeo50KqA",
+    "8910586383:AAHA17IaaNJlyxA67n962WqWp6uaRNCgLlQ",
+    "8529811233:AAFkxtMd7qwt60EokC1n3d48PxEHz11KqAE",
+    "8935772171:AAHSzMVE5k2bkQXof2fXGJGsH5pGQEn43Ec",
+    "8952225468:AAHN7IIJs_ytovSF-RNHdxETTMo9evxibLk",
+]
+
+ALL_BOTS_TOKEN = [MAIN_BOT_TOKEN] + EXTRA_BOTS_TOKEN
+TOTAL_BOTS = len(ALL_BOTS_TOKEN)
+
+# Spam settings
+SPAM_DELAY = 0.5
+MAX_MESSAGES = 100
+
+# ============================================
+# PREMIUM CUSTOM EMOJI IDs (PEHLE WALE)
+# ============================================
+
+# Button emojis
 ADD_BTN_EMOJI_ID = "5253652327734192243"
 SUPPORT_BTN_EMOJI_ID = "5443038326535759644"
 CHANNEL_BTN_EMOJI_ID = "5771695636411847302"
 OWNER_BTN_EMOJI_ID = "6136204644625423818"
 
+# Message emojis
+EMOJI1_ID = "5454390891466726015"
+EMOJI2_ID = "5355051922862653659"
+EMOJI3_ID = "5424766882823544746"
+EMOJI4_ID = "6276090299232031662"
+BHAGWAAN_EMOJI_ID = "5285070644864628879"
+POWERED_BY_EMOJI_ID = "5208727996315220567"
+BOT_STATUS_EMOJI_ID = "5231200819986047254"
+TOTAL_BOTS_EMOJI_ID = "5287684458881756303"
+AUTHORIZED_EMOJI_ID = "5330194932781050507"
+NO_SPAM_EMOJI_ID = "5240241223632954241"
+APPROVED_USERS_EMOJI_ID = "5780463361175066565"
+
+# Premium emoji format
+EMOJI1 = f'<tg-emoji emoji-id="{EMOJI1_ID}">⭐️</tg-emoji>'
+EMOJI2 = f'<tg-emoji emoji-id="{EMOJI2_ID}">✨</tg-emoji>'
+EMOJI3 = f'<tg-emoji emoji-id="{EMOJI3_ID}">💎</tg-emoji>'
+EMOJI4 = f'<tg-emoji emoji-id="{EMOJI4_ID}">🔥</tg-emoji>'
+BHAGWAAN_EMOJI = f'<tg-emoji emoji-id="{BHAGWAAN_EMOJI_ID}">👑</tg-emoji>'
+POWERED_BY_EMOJI = f'<tg-emoji emoji-id="{POWERED_BY_EMOJI_ID}">⚡</tg-emoji>'
+BOT_STATUS_EMOJI = f'<tg-emoji emoji-id="{BOT_STATUS_EMOJI_ID}">📊</tg-emoji>'
+TOTAL_BOTS_EMOJI = f'<tg-emoji emoji-id="{TOTAL_BOTS_EMOJI_ID}">🤖</tg-emoji>'
+AUTHORIZED_EMOJI = f'<tg-emoji emoji-id="{AUTHORIZED_EMOJI_ID}">✅</tg-emoji>'
+NO_SPAM_EMOJI = f'<tg-emoji emoji-id="{NO_SPAM_EMOJI_ID}">🟢</tg-emoji>'
+APPROVED_USERS_EMOJI = f'<tg-emoji emoji-id="{APPROVED_USERS_EMOJI_ID}">✅</tg-emoji>'
+
 # Files
+APPROVED_FILE = "approved_users.json"
 FILTERS_FILE = "filters.json"
 WELCOME_FILE = "welcome.json"
 
 # Global variables
+spam_active = False
+spam_task = None
+spam_target_id = None
+active_bots = []
+main_bot = None
+approved_users = set()
 filters_data = {}
 welcome_data = {}
+current_spam_count = 0
 
-bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
 
 # ============================================
 # FILE FUNCTIONS
 # ============================================
+
+def load_approved_users():
+    global approved_users
+    if os.path.exists(APPROVED_FILE):
+        with open(APPROVED_FILE, 'r') as f:
+            data = json.load(f)
+            approved_users = set(data.get('users', []))
+    print(f"📋 Loaded {len(approved_users)} approved users")
+
+def save_approved_users():
+    with open(APPROVED_FILE, 'w') as f:
+        json.dump({'users': list(approved_users)}, f)
 
 def load_filters():
     global filters_data
@@ -61,16 +134,15 @@ def save_welcome():
         json.dump(welcome_data, f)
 
 
-async def is_admin(user_id: int, chat_id: int = None) -> bool:
+# ============================================
+# HELPER FUNCTIONS
+# ============================================
+
+def is_authorized(user_id):
     if user_id == OWNER_ID:
         return True
-    if chat_id:
-        try:
-            member = await bot.get_chat_member(chat_id, user_id)
-            if member.status in ['creator', 'administrator']:
-                return True
-        except:
-            pass
+    if str(user_id) in approved_users:
+        return True
     return False
 
 def format_user_mention(user_id, name=None):
@@ -79,7 +151,145 @@ def format_user_mention(user_id, name=None):
     return f'<a href="tg://user?id={user_id}">{name}</a>'
 
 def parse_welcome_text(text, user_id, user_name, user_mention):
-    return text.replace("{mention}", user_mention).replace("{id}", str(user_id)).replace("{name}", user_name)
+    replacements = {
+        "{mention}": user_mention,
+        "{id}": str(user_id),
+        "{name}": user_name,
+        "{first_name}": user_name.split()[0] if user_name else "User",
+    }
+    for placeholder, value in replacements.items():
+        text = text.replace(placeholder, value)
+    return text
+
+
+# ============================================
+# SPAM FUNCTIONS (PEHLE JESI)
+# ============================================
+
+async def create_all_bots():
+    bots = []
+    print("\n📡 Connecting to all bots...")
+    
+    for i, token in enumerate(ALL_BOTS_TOKEN):
+        try:
+            bot = Bot(token=token)
+            bot_info = await bot.get_me()
+            bots.append(bot)
+            if i == 0:
+                print(f"✅ MAIN BOT: @{bot_info.username}")
+            else:
+                print(f"✅ Extra Bot {i}: @{bot_info.username}")
+        except Exception as e:
+            print(f"❌ Bot {i+1} failed: {str(e)}")
+    
+    print(f"\n🎯 Total {len(bots)}/{TOTAL_BOTS} bots ready!\n")
+    return bots
+
+async def close_all_bots(bots):
+    for bot in bots:
+        try:
+            await bot.close()
+        except:
+            pass
+
+async def send_spam_messages(bots_list, target_id, message_text):
+    global spam_active, current_spam_count
+    
+    current_spam_count = 0
+    msg_index = 1
+    
+    while spam_active and current_spam_count < MAX_MESSAGES:
+        for bot_id, bot in enumerate(bots_list, 1):
+            if not spam_active or current_spam_count >= MAX_MESSAGES:
+                break
+            
+            try:
+                if bot_id == 1:
+                    final_msg = f"🤖 [MAIN] {message_text} [{msg_index}]"
+                else:
+                    final_msg = f"🔄 [Bot-{bot_id-1}] {message_text} [{msg_index}]"
+                
+                await bot.send_message(chat_id=target_id, text=final_msg)
+                current_spam_count += 1
+                print(f"✅ Msg {current_spam_count}/{MAX_MESSAGES} - Bot {bot_id}")
+                await asyncio.sleep(SPAM_DELAY)
+            except Exception as e:
+                print(f"❌ Bot {bot_id} error: {e}")
+        
+        msg_index += 1
+    
+    spam_active = False
+
+
+# ============================================
+# SPAM COMMANDS (PEHLE JESE)
+# ============================================
+
+@dp.message(Command("spam"))
+async def cmd_spam(message: types.Message):
+    global spam_active, spam_task, active_bots, current_spam_count
+    
+    if not is_authorized(message.from_user.id):
+        owner_mention = format_user_mention(OWNER_ID, "L ɪ ɢ ʜ ᴛ")
+        await message.reply(f"{owner_mention} {EMOJI4} ko baap bana pehle!", parse_mode=ParseMode.HTML)
+        return
+    
+    if spam_active:
+        await message.reply("⚠️ Spam already running! Use /stopspam")
+        return
+    
+    args = message.text.split(maxsplit=1)
+    if len(args) < 2:
+        await message.reply(f"⚠️ Usage: `/spam message`\nExample: `/spam Hello`", parse_mode=ParseMode.MARKDOWN)
+        return
+    
+    msg_text = args[1]
+    
+    if message.reply_to_message:
+        target_id = message.reply_to_message.from_user.id
+        target_name = message.reply_to_message.from_user.first_name
+    else:
+        target_id = message.from_user.id
+        target_name = message.from_user.first_name
+    
+    await message.reply(f"🚀 Starting {TOTAL_BOTS} bots spam...")
+    
+    active_bots = await create_all_bots()
+    if len(active_bots) == 0:
+        await message.reply("❌ No bots working!")
+        return
+    
+    spam_active = True
+    current_spam_count = 0
+    
+    spam_task = asyncio.create_task(send_spam_messages(active_bots, target_id, msg_text))
+    
+    await message.reply(f"✅ *SPAM STARTED!*\n👤 Target: {target_name}\n🛑 Use /stopspam", parse_mode=ParseMode.MARKDOWN)
+
+
+@dp.message(Command("stopspam"))
+async def cmd_stopspam(message: types.Message):
+    global spam_active, active_bots, spam_task
+    
+    if not is_authorized(message.from_user.id):
+        await message.reply("❌ Aap spam stop nahi kar sakte!")
+        return
+    
+    if not spam_active:
+        await message.reply("ℹ️ No active spam.")
+        return
+    
+    owner_mention = format_user_mention(OWNER_ID, "L ɪ ɢ ʜ ᴛ")
+    
+    spam_active = False
+    
+    if spam_task and not spam_task.done():
+        spam_task.cancel()
+    
+    await close_all_bots(active_bots)
+    active_bots = []
+    
+    await message.reply(f"{owner_mention} {BHAGWAAN_EMOJI} bhagwaan aye!\n\n🛑 *SPAM STOPPED!*", parse_mode=ParseMode.HTML)
 
 
 # ============================================
@@ -88,8 +298,8 @@ def parse_welcome_text(text, user_id, user_name, user_mention):
 
 @dp.message(Command("filter"))
 async def add_filter(message: types.Message):
-    if not await is_admin(message.from_user.id, message.chat.id):
-        await message.reply("❌ Sirf admin filter add kar sakta hai!")
+    if not is_authorized(message.from_user.id):
+        await message.reply("❌ Aap authorized nahi hain!")
         return
     
     args = message.text.split(maxsplit=1)
@@ -126,8 +336,8 @@ async def add_filter(message: types.Message):
 
 @dp.message(Command("filters"))
 async def list_filters(message: types.Message):
-    if not await is_admin(message.from_user.id, message.chat.id):
-        await message.reply("❌ Sirf admin filters dekh sakta hai!")
+    if not is_authorized(message.from_user.id):
+        await message.reply("❌ Aap authorized nahi hain!")
         return
     
     chat_id = str(message.chat.id)
@@ -144,8 +354,8 @@ async def list_filters(message: types.Message):
 
 @dp.message(Command("dfilter"))
 async def delete_filter(message: types.Message):
-    if not await is_admin(message.from_user.id, message.chat.id):
-        await message.reply("❌ Sirf admin filter delete kar sakta hai!")
+    if not is_authorized(message.from_user.id):
+        await message.reply("❌ Aap authorized nahi hain!")
         return
     
     args = message.text.split(maxsplit=1)
@@ -196,12 +406,12 @@ async def check_filters(message: types.Message):
 
 @dp.message(Command("setwelcome"))
 async def set_welcome(message: types.Message):
-    if not await is_admin(message.from_user.id, message.chat.id):
-        await message.reply("❌ Sirf admin welcome set kar sakta hai!")
+    if not is_authorized(message.from_user.id):
+        await message.reply("❌ Aap authorized nahi hain!")
         return
     
     if not message.reply_to_message:
-        await message.reply("⚠️ Reply to a message and type `/setwelcome`\n\nPlaceholders: {mention}, {id}, {name}")
+        await message.reply("⚠️ Reply to a message and type `/setwelcome`")
         return
     
     chat_id = str(message.chat.id)
@@ -216,7 +426,7 @@ async def set_welcome(message: types.Message):
     elif replied.sticker:
         welcome_data[chat_id] = {"type": "sticker", "file_id": replied.sticker.file_id}
     else:
-        await message.reply("❌ Unsupported! Use text, photo, video, or sticker")
+        await message.reply("❌ Unsupported!")
         return
     
     save_welcome()
@@ -225,8 +435,8 @@ async def set_welcome(message: types.Message):
 
 @dp.message(Command("clearwelcome"))
 async def clear_welcome(message: types.Message):
-    if not await is_admin(message.from_user.id, message.chat.id):
-        await message.reply("❌ Sirf admin welcome clear kar sakta hai!")
+    if not is_authorized(message.from_user.id):
+        await message.reply("❌ Aap authorized nahi hain!")
         return
     
     chat_id = str(message.chat.id)
@@ -247,7 +457,7 @@ async def welcome_new_member(message: types.Message):
         return
     
     for new_member in message.new_chat_members:
-        if new_member.id == (await bot.get_me()).id:
+        if new_member.id == (await main_bot.get_me()).id:
             continue
         
         user_id = new_member.id
@@ -273,7 +483,91 @@ async def welcome_new_member(message: types.Message):
 
 
 # ============================================
-# START COMMAND - WITH PREMIUM EMOJI (SIMPLE EMOJI)
+# ADMIN COMMANDS
+# ============================================
+
+@dp.message(Command("approve"))
+async def cmd_approve(message: types.Message):
+    if message.from_user.id != OWNER_ID:
+        await message.reply("❌ Sirf owner approve kar sakta hai!")
+        return
+    
+    args = message.text.split()
+    if len(args) < 2:
+        await message.reply("Usage: `/approve @username`", parse_mode=ParseMode.MARKDOWN)
+        return
+    
+    target = args[1]
+    clean_target = target.replace('@', '').lower()
+    
+    approved_users.add(clean_target)
+    save_approved_users()
+    
+    await message.reply(f"✅ APPROVED!\n👤 {target}", parse_mode=ParseMode.MARKDOWN)
+
+
+@dp.message(Command("dapprove"))
+async def cmd_dapprove(message: types.Message):
+    if message.from_user.id != OWNER_ID:
+        await message.reply("❌ Sirf owner dapprove kar sakta hai!")
+        return
+    
+    args = message.text.split()
+    if len(args) < 2:
+        await message.reply("Usage: `/dapprove @username`", parse_mode=ParseMode.MARKDOWN)
+        return
+    
+    target = args[1]
+    clean_target = target.replace('@', '').lower()
+    
+    if clean_target not in approved_users:
+        await message.reply(f"❌ {target} approved nahi hai!")
+        return
+    
+    approved_users.remove(clean_target)
+    save_approved_users()
+    
+    await message.reply(f"✅ DAPPROVED!\n👤 {target}", parse_mode=ParseMode.MARKDOWN)
+
+
+@dp.message(Command("approved"))
+async def cmd_approvedlist(message: types.Message):
+    if message.from_user.id != OWNER_ID:
+        await message.reply("❌ Sirf owner dekh sakta hai!")
+        return
+    
+    if not approved_users:
+        await message.reply("📋 No approved users", parse_mode=ParseMode.MARKDOWN)
+        return
+    
+    users = []
+    for u in approved_users:
+        if u.isdigit():
+            users.append(f"🆔 `{u}`")
+        else:
+            users.append(f"👤 @{u}")
+    
+    await message.reply(f"✅ APPROVED USERS\n📋 Total: {len(approved_users)}\n\n" + "\n".join(users), parse_mode=ParseMode.MARKDOWN)
+
+
+# ============================================
+# STATUS COMMAND
+# ============================================
+
+@dp.message(Command("status"))
+async def cmd_status(message: types.Message):
+    if not is_authorized(message.from_user.id):
+        await message.reply("❌ Aap authorized nahi hain!")
+        return
+    
+    if spam_active:
+        await message.reply(f"{NO_SPAM_EMOJI} *SPAM ACTIVE*\n📊 Progress: {current_spam_count}/{MAX_MESSAGES}", parse_mode=ParseMode.MARKDOWN)
+    else:
+        await message.reply(f"{NO_SPAM_EMOJI} *NO SPAM*\n{TOTAL_BOTS_EMOJI} Total Bots: {TOTAL_BOTS}\n{APPROVED_USERS_EMOJI} Approved: {len(approved_users)}", parse_mode=ParseMode.MARKDOWN)
+
+
+# ============================================
+# START COMMAND - PEHLE JESI (PURE PREMIUM EMOJI)
 # ============================================
 
 @dp.message(Command("start"))
@@ -284,42 +578,27 @@ async def cmd_start(message: types.Message):
     owner_mention = format_user_mention(OWNER_ID, "L ɪ ɢ ʜ ᴛ")
     user_mention = format_user_mention(user.id, user.first_name)
     
-    is_admin_user = await is_admin(user.id, message.chat.id)
-    auth_status = "✅ Authorized" if is_admin_user else "❌ Not Authorized"
+    is_auth = is_authorized(user.id)
+    auth_status = "Authorized" if is_auth else "Not Authorized"
     
-    # Premium emoji - direct simple emoji (yEH KAAM KAREGA)
-    # ⭐️ = 5454390891466726015 ka fallback
-    # ✨ = 5355051922862653659 ka fallback
-    # 💎 = 5424766882823544746 ka fallback
-    # 🔥 = 6276090299232031662 ka fallback
-    # ⚡ = 5208727996315220567 ka fallback
-    # 📊 = 5231200819986047254 ka fallback
-    # 🤖 = 5287684458881756303 ka fallback
-    # ✅ = 5330194932781050507 ka fallback
-    
+    # PEHLE JESA MESSAGE - PURE PREMIUM EMOJI
     message_text = (
-        f"Hey {user_mention} ⭐️\n\n"
-        f"✨ this is midnight manage bot 💎\n\n\n"
-        f"🔥 powered by : {owner_mention} ⚡\n\n"
-        f"📊 *Bot Status*\n"
-        f"🤖 Total Bots: 1\n"
-        f"✅ {auth_status}\n\n"
-        f"📋 *Commands:*\n"
-        f"🔍 `/filter keyword` - Add filter\n"
-        f"📋 `/filters` - List filters\n"
-        f"❌ `/dfilter keyword` - Delete filter\n"
-        f"👋 `/setwelcome` - Set welcome\n"
-        f"🗑️ `/clearwelcome` - Clear welcome"
+        f"Hey {user_mention} {EMOJI1}\n\n"
+        f"{EMOJI2} this is midnight manage bot {EMOJI3}\n\n\n"
+        f"{EMOJI4} powered by : {owner_mention} {POWERED_BY_EMOJI}\n\n"
+        f"{BOT_STATUS_EMOJI} *Bot Status*\n"
+        f"{TOTAL_BOTS_EMOJI} Total Bots: {TOTAL_BOTS}\n"
+        f"{AUTHORIZED_EMOJI} {auth_status}"
     )
     
-    bot_info = await bot.get_me()
+    bot_info = await main_bot.get_me()
     bot_username = bot_info.username
     
-    # Buttons with premium emoji icons
+    # PEHLE JESE BUTTONS - PREMIUM EMOJI ICONS
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(
-                text="➕ ADD ME TO YOUR GROUP",
+                text="ADD ME TO YOUR GROUP",
                 url=f"https://t.me/{bot_username}?startgroup=botstart",
                 style="primary",
                 icon_custom_emoji_id=ADD_BTN_EMOJI_ID
@@ -327,13 +606,13 @@ async def cmd_start(message: types.Message):
         ],
         [
             InlineKeyboardButton(
-                text="💬 SUPPORT",
+                text="SUPPORT",
                 url="https://t.me/midnight_supportt",
                 style="success",
                 icon_custom_emoji_id=SUPPORT_BTN_EMOJI_ID
             ),
             InlineKeyboardButton(
-                text="📢 CHANNEL",
+                text="CHANNEL",
                 url="https://t.me/midnight_chatclub",
                 style="success",
                 icon_custom_emoji_id=CHANNEL_BTN_EMOJI_ID
@@ -341,7 +620,7 @@ async def cmd_start(message: types.Message):
         ],
         [
             InlineKeyboardButton(
-                text="👑 OWNER",
+                text="OWNER",
                 url="https://t.me/light_speedy",
                 style="danger",
                 icon_custom_emoji_id=OWNER_BTN_EMOJI_ID
@@ -366,13 +645,18 @@ async def cmd_start(message: types.Message):
 async def cmd_help(message: types.Message):
     help_text = (
         "📋 *Commands:*\n\n"
-        "🏠 `/start` - Welcome message\n"
-        "🔍 `/filter word` - Add filter (admin)\n"
-        "📋 `/filters` - List filters (admin)\n"
-        "❌ `/dfilter word` - Delete filter (admin)\n"
-        "👋 `/setwelcome` - Set welcome (admin)\n"
-        "🗑️ `/clearwelcome` - Clear welcome (admin)\n"
-        "❓ `/help` - This message"
+        "🏠 `/start` - Welcome\n"
+        "🚀 `/spam message` - Start spam\n"
+        "🛑 `/stopspam` - Stop spam\n"
+        "📊 `/status` - Check status\n"
+        "🔍 `/filter word` - Add filter\n"
+        "📋 `/filters` - List filters\n"
+        "❌ `/dfilter word` - Delete filter\n"
+        "👋 `/setwelcome` - Set welcome\n"
+        "🗑️ `/clearwelcome` - Clear welcome\n"
+        "✅ `/approve @user` - Approve user (owner)\n"
+        "❌ `/dapprove @user` - Remove approval (owner)\n"
+        "📋 `/approved` - List approved (owner)"
     )
     await message.reply(help_text, parse_mode=ParseMode.MARKDOWN)
 
@@ -382,32 +666,48 @@ async def cmd_help(message: types.Message):
 # ============================================
 
 async def main():
+    global main_bot
+    
     print("=" * 50)
-    print("🤖 MIDNIGHT MANAGE BOT")
+    print("🤖 MIDNIGHT MANAGE BOT - COMPLETE")
     print("=" * 50)
     print(f"👑 Owner: @{OWNER_USERNAME} (ID: {OWNER_ID})")
+    print(f"📊 Total Bots: {TOTAL_BOTS}")
     print("=" * 50)
     
+    load_approved_users()
     load_filters()
     load_welcome()
     
-    bot_info = await bot.get_me()
+    main_bot = Bot(token=MAIN_BOT_TOKEN)
+    
+    bot_info = await main_bot.get_me()
     print(f"\n✅ Bot connected: @{bot_info.username}")
     print(f"✅ Bot ID: {bot_info.id}")
     
+    total_filters = sum(len(f) for f in filters_data.values())
+    print(f"\n📋 Loaded: {total_filters} filters")
+    print(f"👋 Loaded: {len(welcome_data)} welcome messages")
+    print(f"✅ Approved: {len(approved_users)} users")
+    
     print("\n📋 Commands:")
-    print("   /start - Welcome message")
-    print("   /filter keyword - Add filter")
-    print("   /filters - List filters")
-    print("   /dfilter keyword - Delete filter")
-    print("   /setwelcome - Set welcome")
-    print("   /clearwelcome - Clear welcome")
-    print("   /help - Help")
+    print("   🏠 /start - Welcome")
+    print("   🚀 /spam message - Start spam (12 bots)")
+    print("   🛑 /stopspam - Stop spam")
+    print("   📊 /status - Check status")
+    print("   🔍 /filter word - Add filter")
+    print("   📋 /filters - List filters")
+    print("   ❌ /dfilter word - Delete filter")
+    print("   👋 /setwelcome - Set welcome")
+    print("   🗑️ /clearwelcome - Clear welcome")
+    print("   ✅ /approve @user - Approve user")
+    print("   ❌ /dapprove @user - Remove approval")
+    print("   📋 /approved - List approved")
     print("=" * 50)
     
     print("\n🚀 Bot is running! Send /start on Telegram\n")
     
-    await dp.start_polling(bot)
+    await dp.start_polling(main_bot)
 
 
 if __name__ == "__main__":
