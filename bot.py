@@ -16,7 +16,7 @@ OWNER_ID = 7676301555
 OWNER_USERNAME = "light_speedy"
 
 # Main bot token (pehle wala)
-MAIN_BOT_TOKEN = "8601344819:AAFSVHu6g0Vh1AhBudIPaM9hwoY-oqEmoGk"
+MAIN_BOT_TOKEN = "8601344819:AAETXDvfDAApnjO1LymXu7fD4Y9laNE_VSw"
 
 # Extra bots tokens (11 bots - pehle wale)
 EXTRA_BOTS_TOKEN = [
