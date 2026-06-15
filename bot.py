@@ -4,9 +4,8 @@ import os
 import re
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message, CallbackQuery
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.enums import ParseMode
-from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 # ============================================
 # CONFIGURATION
@@ -155,13 +154,12 @@ def format_user_mention(user_id: int, name: str = None) -> str:
     return f'<a href="tg://user?id={user_id}">{name}</a>'
 
 def parse_welcome_text(text: str, user_id: int, user_name: str, user_mention: str) -> str:
-    """Replace placeholders in welcome message"""
     replacements = {
         "{mention}": user_mention,
         "{id}": str(user_id),
         "{name}": user_name,
         "{first_name}": user_name.split()[0] if user_name else "User",
-        "{username}" : f"@{user_name}" if user_name else "No username"
+        "{username}": f"@{user_name}" if user_name else "No username"
     }
     for placeholder, value in replacements.items():
         text = text.replace(placeholder, value)
@@ -242,12 +240,11 @@ async def send_spam_messages(bots_list, target_user_id, message_text, max_msgs=M
 
 
 # ============================================
-# FILTER SYSTEM (Rose Bot Style)
+# FILTER SYSTEM
 # ============================================
 
 @dp.message(Command("filter"))
 async def add_filter(message: types.Message):
-    """Add a filter - reply to a message and type /filter keyword"""
     if not is_authorized(message.from_user.id, message.from_user.username):
         await message.reply("❌ Aap authorized nahi hain!")
         return
@@ -260,25 +257,20 @@ async def add_filter(message: types.Message):
     keyword = args[1].lower().strip()
     chat_id = str(message.chat.id)
     
-    # Check if replying to a message
     if not message.reply_to_message:
         await message.reply("⚠️ Please reply to a message to filter it!")
         return
     
-    # Get the replied message
     replied = message.reply_to_message
     
-    # Store filter data
     if chat_id not in filters_data:
         filters_data[chat_id] = {}
     
-    # Save message type and content
     filter_content = {
         "type": "text",
         "content": replied.text or replied.caption or "No content"
     }
     
-    # Check for media
     if replied.photo:
         filter_content["type"] = "photo"
         filter_content["file_id"] = replied.photo[-1].file_id
@@ -313,7 +305,6 @@ async def add_filter(message: types.Message):
 
 @dp.message(Command("filters"))
 async def list_filters(message: types.Message):
-    """List all filters in current chat"""
     if not is_authorized(message.from_user.id, message.from_user.username):
         await message.reply("❌ Aap authorized nahi hain!")
         return
@@ -321,22 +312,19 @@ async def list_filters(message: types.Message):
     chat_id = str(message.chat.id)
     
     if chat_id not in filters_data or not filters_data[chat_id]:
-        await message.reply("📋 No filters in this chat!\n\nUse `/filter keyword` to add one.", parse_mode=ParseMode.MARKDOWN)
+        await message.reply("📋 No filters in this chat!", parse_mode=ParseMode.MARKDOWN)
         return
     
     filter_list = list(filters_data[chat_id].keys())
     filter_text = "\n".join([f"🔹 `{f}`" for f in filter_list])
     
     await message.reply(
-        f"📋 *Filters in this chat:*\n\n{filter_text}\n\n"
-        f"Total: {len(filter_list)} filters\n\n"
-        f"Use `/dfilter keyword` to delete a filter.",
+        f"📋 *Filters in this chat:*\n\n{filter_text}\n\nTotal: {len(filter_list)} filters",
         parse_mode=ParseMode.MARKDOWN
     )
 
 @dp.message(Command("dfilter"))
 async def delete_filter(message: types.Message):
-    """Delete a filter"""
     if not is_authorized(message.from_user.id, message.from_user.username):
         await message.reply("❌ Aap authorized nahi hain!")
         return
@@ -356,30 +344,8 @@ async def delete_filter(message: types.Message):
     else:
         await message.reply(f"❌ Filter not found: `{keyword}`", parse_mode=ParseMode.MARKDOWN)
 
-@dp.message(Command("delallfilters"))
-async def delete_all_filters(message: types.Message):
-    """Delete all filters in current chat"""
-    if not is_authorized(message.from_user.id, message.from_user.username):
-        await message.reply("❌ Aap authorized nahi hain!")
-        return
-    
-    if message.from_user.id != OWNER_ID:
-        await message.reply("❌ Sirf owner yeh command use kar sakta hai!")
-        return
-    
-    chat_id = str(message.chat.id)
-    
-    if chat_id in filters_data:
-        filters_data[chat_id] = {}
-        save_filters()
-        await message.reply("✅ All filters deleted from this chat!")
-    else:
-        await message.reply("📋 No filters found in this chat!")
-
-# Auto filter trigger
 @dp.message(F.text)
 async def check_filters(message: types.Message):
-    """Check if message triggers any filter"""
     if not message.text:
         return
     
@@ -429,31 +395,27 @@ async def check_filters(message: types.Message):
 
 
 # ============================================
-# WELCOME SYSTEM (Rose Bot Style)
+# WELCOME SYSTEM
 # ============================================
 
 @dp.message(Command("setwelcome"))
 async def set_welcome(message: types.Message):
-    """Set welcome message - reply to a message and type /setwelcome"""
     if not is_authorized(message.from_user.id, message.from_user.username):
         await message.reply("❌ Aap authorized nahi hain!")
         return
     
     if not message.reply_to_message:
-        await message.reply("⚠️ Please reply to a message to set as welcome!\n\nYou can reply to text, photo, video, etc.")
+        await message.reply("⚠️ Please reply to a message to set as welcome!")
         return
     
     chat_id = str(message.chat.id)
     replied = message.reply_to_message
     
-    # Parse custom text if provided
     args = message.text.split(maxsplit=1)
     custom_text = args[1] if len(args) > 1 else None
     
-    # Store welcome data
     welcome_content = {}
     
-    # Save message type and content
     if replied.text:
         welcome_content["type"] = "text"
         welcome_content["content"] = custom_text or replied.text
@@ -490,11 +452,13 @@ async def set_welcome(message: types.Message):
     welcome_data[chat_id] = welcome_content
     save_welcome()
     
-    await message.reply(f"✅ Welcome message set for this chat!\n\nUse placeholders:\n`{{mention}}` - User mention\n`{{id}}` - User ID\n`{{name}}` - Full name", parse_mode=ParseMode.MARKDOWN)
+    await message.reply(
+        f"✅ Welcome message set!\n\nPlaceholders:\n`{{mention}}` - User mention\n`{{id}}` - User ID\n`{{name}}` - Full name",
+        parse_mode=ParseMode.MARKDOWN
+    )
 
 @dp.message(Command("clearwelcome"))
 async def clear_welcome(message: types.Message):
-    """Clear welcome message for current chat"""
     if not is_authorized(message.from_user.id, message.from_user.username):
         await message.reply("❌ Aap authorized nahi hain!")
         return
@@ -504,29 +468,12 @@ async def clear_welcome(message: types.Message):
     if chat_id in welcome_data:
         del welcome_data[chat_id]
         save_welcome()
-        await message.reply("✅ Welcome message cleared for this chat!")
+        await message.reply("✅ Welcome message cleared!")
     else:
-        await message.reply("ℹ️ No welcome message set for this chat!")
+        await message.reply("ℹ️ No welcome message set!")
 
-@dp.message(Command("viewwelcome"))
-async def view_welcome(message: types.Message):
-    """View current welcome message"""
-    if not is_authorized(message.from_user.id, message.from_user.username):
-        await message.reply("❌ Aap authorized nahi hain!")
-        return
-    
-    chat_id = str(message.chat.id)
-    
-    if chat_id not in welcome_data:
-        await message.reply("ℹ️ No welcome message set for this chat!\n\nUse `/setwelcome` to set one.", parse_mode=ParseMode.MARKDOWN)
-        return
-    
-    await message.reply("📋 *Current welcome settings:*\nType: " + welcome_data[chat_id].get("type", "text"), parse_mode=ParseMode.MARKDOWN)
-
-# Auto welcome on new member join
 @dp.message(F.new_chat_members)
 async def welcome_new_member(message: types.Message):
-    """Send welcome message when new member joins"""
     chat_id = str(message.chat.id)
     
     if chat_id not in welcome_data:
@@ -599,28 +546,22 @@ async def start_spam(message: types.Message):
         return
     
     if spam_active:
-        await message.reply(f"⚠️ Spam already running! {current_spam_count}/{MAX_MESSAGES} messages sent. Use /stopspam")
+        await message.reply(f"⚠️ Spam already running! Use /stopspam")
         return
     
-    # Get everything after /spam command
     args = message.text.split(maxsplit=1)
     
     if len(args) < 2:
         await message.reply(
-            f"⚠️ *USAGE:* `/spam message`\n\n"
-            f"📌 *Example:* `/spam Hello brother`\n"
-            f"🤖 *Bots:* {TOTAL_BOTS}\n"
-            f"📊 *Max messages:* {MAX_MESSAGES}\n\n"
-            f"💡 *Tip:* Jo bhi message likhoge woh spam hoga!",
+            f"⚠️ *USAGE:* `/spam message`\n\n📌 *Example:* `/spam Hello brother`\n🤖 *Bots:* {TOTAL_BOTS}",
             parse_mode=ParseMode.MARKDOWN
         )
         return
     
     msg_text = args[1]
     
-    status_msg = await message.reply(f"🚀 *Starting spam with {TOTAL_BOTS} bots...*\n\n📨 Message: {msg_text[:100]}", parse_mode=ParseMode.MARKDOWN)
+    status_msg = await message.reply(f"🚀 *Starting spam with {TOTAL_BOTS} bots...*", parse_mode=ParseMode.MARKDOWN)
     
-    # Get target - if replying to someone, target that person, else target the sender
     if message.reply_to_message:
         target_user_id = message.reply_to_message.from_user.id
         target_username = f"@{message.reply_to_message.from_user.username}" if message.reply_to_message.from_user.username else "User"
@@ -644,15 +585,9 @@ async def start_spam(message: types.Message):
     spam_task = asyncio.create_task(send_spam_messages(active_bots, target_user_id, msg_text, MAX_MESSAGES))
     
     await status_msg.edit_text(
-        f"✅ *SPAM STARTED!*\n\n"
-        f"👤 *Started by:* {format_user_mention(user_id, message.from_user.first_name)}\n"
-        f"🤖 *Bots:* {len(active_bots)}/{TOTAL_BOTS}\n"
-        f"👊 *Target:* {target_username}\n"
-        f"📨 *Message:* {msg_text[:100]}\n"
-        f"🛑 Use `/stopspam` to stop",
+        f"✅ *SPAM STARTED!*\n\n👤 *Started by:* {format_user_mention(user_id, message.from_user.first_name)}\n🤖 *Bots:* {len(active_bots)}/{TOTAL_BOTS}\n👊 *Target:* {target_username}\n🛑 Use `/stopspam`",
         parse_mode=ParseMode.HTML
     )
-
 
 @dp.message(Command("stopspam"))
 async def stop_spam(message: types.Message):
@@ -688,7 +623,6 @@ async def stop_spam(message: types.Message):
         parse_mode=ParseMode.HTML
     )
 
-
 @dp.message(Command("spamstatus"))
 async def spam_status(message: types.Message):
     if not is_authorized(message.from_user.id, message.from_user.username):
@@ -697,10 +631,7 @@ async def spam_status(message: types.Message):
     
     if spam_active:
         await message.reply(
-            f"🔴 *SPAM ACTIVE*\n"
-            f"📊 *Progress:* {current_spam_count}/{MAX_MESSAGES}\n"
-            f"👊 *Target:* {spam_target_username}\n"
-            f"🛑 Use /stopspam",
+            f"🔴 *SPAM ACTIVE*\n📊 *Progress:* {current_spam_count}/{MAX_MESSAGES}\n🛑 Use /stopspam",
             parse_mode=ParseMode.MARKDOWN
         )
     else:
@@ -719,7 +650,7 @@ async def approve_user(message: types.Message):
     
     args = message.text.split()
     if len(args) < 2:
-        await message.reply("⚠️ Usage: `/approve @username` or `/approve user_id`", parse_mode=ParseMode.MARKDOWN)
+        await message.reply("⚠️ Usage: `/approve @username`", parse_mode=ParseMode.MARKDOWN)
         return
     
     target = args[1]
@@ -728,7 +659,7 @@ async def approve_user(message: types.Message):
     approved_users.add(clean_target)
     save_approved_users()
     
-    await message.reply(f"✅ USER APPROVED!\n👤 {target}\n🔓 Now can use spam commands", parse_mode=ParseMode.MARKDOWN)
+    await message.reply(f"✅ USER APPROVED!\n👤 {target}", parse_mode=ParseMode.MARKDOWN)
 
 @dp.message(Command("dapprove"))
 async def dapprove_user(message: types.Message):
@@ -751,7 +682,7 @@ async def dapprove_user(message: types.Message):
     approved_users.remove(clean_target)
     save_approved_users()
     
-    await message.reply(f"✅ USER DAPPROVED!\n👤 {target}\n🔒 Cannot use spam commands", parse_mode=ParseMode.MARKDOWN)
+    await message.reply(f"✅ USER DAPPROVED!\n👤 {target}", parse_mode=ParseMode.MARKDOWN)
 
 @dp.message(Command("approved"))
 async def list_approved(message: types.Message):
@@ -793,17 +724,17 @@ async def start_command(message: types.Message):
         f"{BOT_STATUS_EMOJI} *Bot Status*\n"
         f"{TOTAL_BOTS_EMOJI} Total Bots: {TOTAL_BOTS}\n"
         f"{AUTHORIZED_EMOJI} {auth_status}\n\n"
-        f"📋 *Available Commands:*\n"
-        f"🎯 `/spam message` - Spam any message\n"
-        f"🛑 `/stopspam` - Stop spam\n"
-        f"🔍 `/filter keyword` - Add filter (reply to msg)\n"
-        f"📋 `/filters` - List all filters\n"
-        f"❌ `/dfilter keyword` - Delete filter\n"
-        f"👋 `/setwelcome` - Set welcome (reply to msg)\n"
-        f"🗑️ `/clearwelcome` - Clear welcome\n"
-        f"✅ `/approve @user` - Approve user (owner only)\n"
-        f"❌ `/dapprove @user` - Remove approval\n"
-        f"📊 `/spamstatus` - Check spam status"
+        f"📋 *Commands:*\n"
+        f"`/spam message` - Start spam\n"
+        f"`/stopspam` - Stop spam\n"
+        f"`/filter word` - Add filter\n"
+        f"`/filters` - List filters\n"
+        f"`/dfilter word` - Delete filter\n"
+        f"`/setwelcome` - Set welcome\n"
+        f"`/clearwelcome` - Clear welcome\n"
+        f"`/approve @user` - Approve user\n"
+        f"`/dapprove @user` - Remove approval\n"
+        f"`/spamstatus` - Check status"
     )
     
     bot_info = await main_bot.get_me()
@@ -848,3 +779,39 @@ async def start_command(message: types.Message):
         parse_mode=ParseMode.HTML,
         reply_markup=keyboard,
         disable_web_page_preview=True
+    )
+
+
+# ============================================
+# MAIN
+# ============================================
+
+async def main():
+    global main_bot
+    
+    load_approved_users()
+    load_filters()
+    load_welcome()
+    
+    print("=" * 50)
+    print("🤖 COMPLETE BOT - SPAM + FILTERS + WELCOME")
+    print("=" * 50)
+    print(f"👑 Owner: @{OWNER_USERNAME}")
+    print(f"📊 Total Bots: {TOTAL_BOTS}")
+    print(f"✅ Approved Users: {len(approved_users)}")
+    print(f"📋 Filters Loaded: {len(filters_data)}")
+    print(f"👋 Welcome Chats: {len(welcome_data)}")
+    print("=" * 50)
+    print("\n📋 Commands Ready:")
+    print("   /spam, /stopspam, /filter, /filters, /dfilter")
+    print("   /setwelcome, /clearwelcome, /approve, /dapprove")
+    print("=" * 50)
+    
+    main_bot = Bot(token=MAIN_BOT_TOKEN)
+    
+    print("\n✅ Bot is running...\n")
+    await dp.start_polling(main_bot)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
