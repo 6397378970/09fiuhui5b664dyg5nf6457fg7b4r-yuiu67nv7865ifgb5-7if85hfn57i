@@ -1,10 +1,9 @@
 import asyncio
 import json
 import os
-import re
-from aiogram import Bot, Dispatcher, types, F
+from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.enums import ParseMode
 
 print("🚀 Starting Midnight Manage Bot...")
@@ -62,6 +61,11 @@ BOT_STATUS_EMOJI_ID = "5231200819986047254"
 TOTAL_BOTS_EMOJI_ID = "5287684458881756303"
 AUTHORIZED_EMOJI_ID = "5330194932781050507"
 
+# Status command ke liye naye emoji IDs
+NO_SPAM_EMOJI_ID = "5240241223632954241"      # NO SPAM ke aage
+TOTAL_BOTS_STATUS_EMOJI_ID = "5287684458881756303"  # Total Bots: ke aage (same as above)
+APPROVED_USERS_EMOJI_ID = "5780463361175066565"    # Approved Users: ke aage
+
 EMOJI1 = f'<tg-emoji emoji-id="{EMOJI1_ID}">⭐️</tg-emoji>'
 EMOJI2 = f'<tg-emoji emoji-id="{EMOJI2_ID}">✨</tg-emoji>'
 EMOJI3 = f'<tg-emoji emoji-id="{EMOJI3_ID}">💎</tg-emoji>'
@@ -71,6 +75,11 @@ POWERED_BY_EMOJI = f'<tg-emoji emoji-id="{POWERED_BY_EMOJI_ID}">⚡</tg-emoji>'
 BOT_STATUS_EMOJI = f'<tg-emoji emoji-id="{BOT_STATUS_EMOJI_ID}">📊</tg-emoji>'
 TOTAL_BOTS_EMOJI = f'<tg-emoji emoji-id="{TOTAL_BOTS_EMOJI_ID}">🤖</tg-emoji>'
 AUTHORIZED_EMOJI = f'<tg-emoji emoji-id="{AUTHORIZED_EMOJI_ID}">✅</tg-emoji>'
+
+# Status command ke liye
+NO_SPAM_EMOJI = f'<tg-emoji emoji-id="{NO_SPAM_EMOJI_ID}">🟢</tg-emoji>'
+TOTAL_BOTS_STATUS_EMOJI = f'<tg-emoji emoji-id="{TOTAL_BOTS_STATUS_EMOJI_ID}">🤖</tg-emoji>'
+APPROVED_USERS_EMOJI = f'<tg-emoji emoji-id="{APPROVED_USERS_EMOJI_ID}">✅</tg-emoji>'
 
 # Files
 APPROVED_FILE = "approved_users.json"
@@ -271,23 +280,13 @@ async def set_welcome(message: types.Message):
         welcome_content["file_id"] = replied.audio.file_id
         welcome_content["caption"] = custom_text or replied.caption or ""
     else:
-        await message.reply("❌ Unsupported message type! You can set welcome from: text, photo, video, gif, sticker, document, voice, audio")
+        await message.reply("❌ Unsupported message type!")
         return
     
     welcome_data[chat_id] = welcome_content
     save_welcome()
     
-    await message.reply(
-        f"✅ Welcome message set for this chat!\n\n"
-        f"📊 Type: {welcome_content['type']}\n\n"
-        f"📝 *Placeholders you can use:*\n"
-        f"`{{mention}}` - User mention (blue)\n"
-        f"`{{id}}` - User ID\n"
-        f"`{{name}}` - Full name\n"
-        f"`{{first_name}}` - First name only\n"
-        f"`{{username}}` - Username",
-        parse_mode=ParseMode.MARKDOWN
-    )
+    await message.reply(f"✅ Welcome message set for this chat!\n\n📊 Type: {welcome_content['type']}", parse_mode=ParseMode.MARKDOWN)
 
 @dp.message(Command("clearwelcome"))
 async def clear_welcome(message: types.Message):
@@ -313,20 +312,12 @@ async def view_welcome(message: types.Message):
     chat_id = str(message.chat.id)
     
     if chat_id not in welcome_data:
-        await message.reply("ℹ️ No welcome message set for this chat!\n\nUse `/setwelcome` to set one.", parse_mode=ParseMode.MARKDOWN)
+        await message.reply("ℹ️ No welcome message set!", parse_mode=ParseMode.MARKDOWN)
         return
     
-    wc = welcome_data[chat_id]
-    preview = f"✅ *Current Welcome Settings*\n\n📊 Type: {wc['type']}"
-    
-    if wc['type'] == 'text':
-        preview += f"\n📝 Content: `{wc['content'][:100]}`"
-    else:
-        preview += f"\n📝 Caption: `{wc.get('caption', 'None')[:100]}`"
-    
-    await message.reply(preview, parse_mode=ParseMode.MARKDOWN)
+    await message.reply(f"✅ Welcome is set for this chat!", parse_mode=ParseMode.MARKDOWN)
 
-# Auto welcome on new member join
+# Auto welcome
 @dp.message(F.new_chat_members)
 async def welcome_new_member(message: types.Message):
     chat_id = str(message.chat.id)
@@ -351,43 +342,12 @@ async def welcome_new_member(message: types.Message):
                 await message.reply(text, parse_mode=ParseMode.HTML)
             elif welcome_type == "photo":
                 caption = parse_welcome_text(welcome_content.get("caption", ""), user_id, user_name, user_mention)
-                await message.reply_photo(
-                    photo=welcome_content["file_id"],
-                    caption=caption,
-                    parse_mode=ParseMode.HTML
-                )
+                await message.reply_photo(photo=welcome_content["file_id"], caption=caption, parse_mode=ParseMode.HTML)
             elif welcome_type == "video":
                 caption = parse_welcome_text(welcome_content.get("caption", ""), user_id, user_name, user_mention)
-                await message.reply_video(
-                    video=welcome_content["file_id"],
-                    caption=caption,
-                    parse_mode=ParseMode.HTML
-                )
-            elif welcome_type == "gif":
-                caption = parse_welcome_text(welcome_content.get("caption", ""), user_id, user_name, user_mention)
-                await message.reply_animation(
-                    animation=welcome_content["file_id"],
-                    caption=caption,
-                    parse_mode=ParseMode.HTML
-                )
+                await message.reply_video(video=welcome_content["file_id"], caption=caption, parse_mode=ParseMode.HTML)
             elif welcome_type == "sticker":
                 await message.reply_sticker(sticker=welcome_content["file_id"])
-            elif welcome_type == "document":
-                caption = parse_welcome_text(welcome_content.get("caption", ""), user_id, user_name, user_mention)
-                await message.reply_document(
-                    document=welcome_content["file_id"],
-                    caption=caption,
-                    parse_mode=ParseMode.HTML
-                )
-            elif welcome_type == "voice":
-                await message.reply_voice(voice=welcome_content["file_id"])
-            elif welcome_type == "audio":
-                caption = parse_welcome_text(welcome_content.get("caption", ""), user_id, user_name, user_mention)
-                await message.reply_audio(
-                    audio=welcome_content["file_id"],
-                    caption=caption,
-                    parse_mode=ParseMode.HTML
-                )
         except Exception as e:
             print(f"Error sending welcome: {e}")
 
@@ -404,14 +364,14 @@ async def add_filter(message: types.Message):
     
     args = message.text.split(maxsplit=1)
     if len(args) < 2:
-        await message.reply("⚠️ Usage: Reply to a message and type `/filter keyword`\n\nExample: `/filter hello`", parse_mode=ParseMode.MARKDOWN)
+        await message.reply("⚠️ Usage: Reply to a message and type `/filter keyword`", parse_mode=ParseMode.MARKDOWN)
         return
     
     keyword = args[1].lower().strip()
     chat_id = str(message.chat.id)
     
     if not message.reply_to_message:
-        await message.reply("⚠️ Please reply to a message to filter it!\n\n1. Reply to any message\n2. Type `/filter keyword`", parse_mode=ParseMode.MARKDOWN)
+        await message.reply("⚠️ Please reply to a message to filter it!", parse_mode=ParseMode.MARKDOWN)
         return
     
     replied = message.reply_to_message
@@ -432,29 +392,18 @@ async def add_filter(message: types.Message):
         filter_content["type"] = "video"
         filter_content["file_id"] = replied.video.file_id
         filter_content["caption"] = replied.caption or ""
-    elif replied.animation:
-        filter_content["type"] = "gif"
-        filter_content["file_id"] = replied.animation.file_id
-        filter_content["caption"] = replied.caption or ""
     elif replied.sticker:
         filter_content["type"] = "sticker"
         filter_content["file_id"] = replied.sticker.file_id
-    elif replied.document:
-        filter_content["type"] = "document"
-        filter_content["file_id"] = replied.document.file_id
-        filter_content["caption"] = replied.caption or ""
-    elif replied.voice:
-        filter_content["type"] = "voice"
-        filter_content["file_id"] = replied.voice.file_id
-    elif replied.audio:
-        filter_content["type"] = "audio"
-        filter_content["file_id"] = replied.audio.file_id
+    elif replied.animation:
+        filter_content["type"] = "gif"
+        filter_content["file_id"] = replied.animation.file_id
         filter_content["caption"] = replied.caption or ""
     
     filters_data[chat_id][keyword] = filter_content
     save_filters()
     
-    await message.reply(f"✅ Filter added!\n🔑 Keyword: `{keyword}`\n📊 Type: {filter_content['type']}", parse_mode=ParseMode.MARKDOWN)
+    await message.reply(f"✅ Filter added!\n🔑 Keyword: `{keyword}`", parse_mode=ParseMode.MARKDOWN)
 
 @dp.message(Command("filters"))
 async def list_filters(message: types.Message):
@@ -465,16 +414,13 @@ async def list_filters(message: types.Message):
     chat_id = str(message.chat.id)
     
     if chat_id not in filters_data or not filters_data[chat_id]:
-        await message.reply("📋 No filters in this chat!\n\nUse `/filter keyword` to add one.", parse_mode=ParseMode.MARKDOWN)
+        await message.reply("📋 No filters in this chat!", parse_mode=ParseMode.MARKDOWN)
         return
     
     filter_list = list(filters_data[chat_id].keys())
     filter_text = "\n".join([f"🔹 `{f}`" for f in filter_list])
     
-    await message.reply(
-        f"📋 *Filters in this chat:*\n\n{filter_text}\n\n📊 Total: {len(filter_list)} filters\n\n❌ Delete: `/dfilter keyword`",
-        parse_mode=ParseMode.MARKDOWN
-    )
+    await message.reply(f"📋 *Filters:*\n\n{filter_text}", parse_mode=ParseMode.MARKDOWN)
 
 @dp.message(Command("dfilter"))
 async def delete_filter(message: types.Message):
@@ -497,26 +443,6 @@ async def delete_filter(message: types.Message):
     else:
         await message.reply(f"❌ Filter not found: `{keyword}`", parse_mode=ParseMode.MARKDOWN)
 
-@dp.message(Command("delallfilters"))
-async def delete_all_filters(message: types.Message):
-    if not is_authorized(message.from_user.id):
-        await message.reply("❌ Aap authorized nahi hain!")
-        return
-    
-    if message.from_user.id != OWNER_ID:
-        await message.reply("❌ Sirf owner yeh command use kar sakta hai!")
-        return
-    
-    chat_id = str(message.chat.id)
-    
-    if chat_id in filters_data:
-        filters_data[chat_id] = {}
-        save_filters()
-        await message.reply("✅ All filters deleted from this chat!")
-    else:
-        await message.reply("📋 No filters found in this chat!")
-
-# Auto trigger filters
 @dp.message(F.text)
 async def check_filters(message: types.Message):
     if not message.text:
@@ -534,36 +460,13 @@ async def check_filters(message: types.Message):
                     if filter_type == "text":
                         await message.reply(filter_content["content"])
                     elif filter_type == "photo":
-                        await message.reply_photo(
-                            photo=filter_content["file_id"],
-                            caption=filter_content.get("caption", "")
-                        )
+                        await message.reply_photo(photo=filter_content["file_id"], caption=filter_content.get("caption", ""))
                     elif filter_type == "video":
-                        await message.reply_video(
-                            video=filter_content["file_id"],
-                            caption=filter_content.get("caption", "")
-                        )
-                    elif filter_type == "gif":
-                        await message.reply_animation(
-                            animation=filter_content["file_id"],
-                            caption=filter_content.get("caption", "")
-                        )
+                        await message.reply_video(video=filter_content["file_id"], caption=filter_content.get("caption", ""))
                     elif filter_type == "sticker":
                         await message.reply_sticker(sticker=filter_content["file_id"])
-                    elif filter_type == "document":
-                        await message.reply_document(
-                            document=filter_content["file_id"],
-                            caption=filter_content.get("caption", "")
-                        )
-                    elif filter_type == "voice":
-                        await message.reply_voice(voice=filter_content["file_id"])
-                    elif filter_type == "audio":
-                        await message.reply_audio(
-                            audio=filter_content["file_id"],
-                            caption=filter_content.get("caption", "")
-                        )
                 except Exception as e:
-                    print(f"Error sending filter: {e}")
+                    print(f"Error: {e}")
                 break
 
 
@@ -612,7 +515,7 @@ async def cmd_spam(message: types.Message):
     spam_task = asyncio.create_task(send_spam_messages(active_bots, target_id, msg_text))
     
     await message.reply(
-        f"✅ *SPAM STARTED!*\n\n👤 Target: {target_name}\n🤖 Bots: {len(active_bots)}/{TOTAL_BOTS}\n📨 Message: {msg_text[:50]}\n🛑 Use /stopspam to stop",
+        f"✅ *SPAM STARTED!*\n\n👤 Target: {target_name}\n🤖 Bots: {len(active_bots)}/{TOTAL_BOTS}\n🛑 Use /stopspam",
         parse_mode=ParseMode.MARKDOWN
     )
 
@@ -645,6 +548,10 @@ async def cmd_stopspam(message: types.Message):
     )
 
 
+# ============================================
+# STATUS COMMAND - WITH PREMIUM EMOJI
+# ============================================
+
 @dp.message(Command("status"))
 async def cmd_status(message: types.Message):
     if not is_authorized(message.from_user.id):
@@ -652,15 +559,21 @@ async def cmd_status(message: types.Message):
         return
     
     if spam_active:
-        await message.reply(
-            f"🔴 *SPAM ACTIVE*\n📊 Progress: {current_spam_count}/{MAX_MESSAGES}\n🛑 Use /stopspam",
-            parse_mode=ParseMode.MARKDOWN
+        # Active spam status with emojis
+        status_text = (
+            f"{NO_SPAM_EMOJI} *SPAM ACTIVE*\n\n"
+            f"{TOTAL_BOTS_STATUS_EMOJI} Progress: {current_spam_count}/{MAX_MESSAGES}\n"
+            f"🛑 Use /stopspam"
         )
+        await message.reply(status_text, parse_mode=ParseMode.MARKDOWN)
     else:
-        await message.reply(
-            f"🟢 *NO SPAM*\n🤖 Total Bots: {TOTAL_BOTS}\n✅ Approved Users: {len(approved_users)}",
-            parse_mode=ParseMode.MARKDOWN
+        # No spam status with premium emojis as requested
+        status_text = (
+            f"{NO_SPAM_EMOJI} *NO SPAM*\n\n"
+            f"{TOTAL_BOTS_STATUS_EMOJI} Total Bots: {TOTAL_BOTS}\n"
+            f"{APPROVED_USERS_EMOJI} Approved Users: {len(approved_users)}"
         )
+        await message.reply(status_text, parse_mode=ParseMode.MARKDOWN)
 
 
 # ============================================
@@ -750,20 +663,7 @@ async def cmd_start(message: types.Message):
         f"{EMOJI4} powered by : {owner_mention} {POWERED_BY_EMOJI}\n\n"
         f"{BOT_STATUS_EMOJI} *Bot Status*\n"
         f"{TOTAL_BOTS_EMOJI} Total Bots: {TOTAL_BOTS}\n"
-        f"{AUTHORIZED_EMOJI} {auth_status}\n\n"
-        f"📋 *Commands:*\n"
-        f"`/spam message` - Start spam (12 bots)\n"
-        f"`/stopspam` - Stop spam\n"
-        f"`/status` - Check status\n"
-        f"`/filter word` - Add filter (reply to msg)\n"
-        f"`/filters` - List all filters\n"
-        f"`/dfilter word` - Delete filter\n"
-        f"`/setwelcome` - Set welcome (reply to msg)\n"
-        f"`/clearwelcome` - Clear welcome\n"
-        f"`/viewwelcome` - View welcome\n"
-        f"`/approve @user` - Approve user (owner)\n"
-        f"`/dapprove @user` - Remove approval (owner)\n"
-        f"`/approved` - List approved users (owner)"
+        f"{AUTHORIZED_EMOJI} {auth_status}"
     )
     
     bot_info = await main_bot.get_me()
@@ -804,18 +704,16 @@ async def main():
     print(f"✅ Bot ID: {bot_info.id}")
     
     print("\n📋 Available Commands:")
-    print("   🚀 /spam message - 12 bots spam")
+    print("   🚀 /spam message - Start spam")
     print("   🛑 /stopspam - Stop spam")
-    print("   📊 /status - Check status")
+    print("   📊 /status - Check status (with premium emoji)")
     print("   🔍 /filter word - Add filter")
     print("   📋 /filters - List filters")
     print("   ❌ /dfilter word - Delete filter")
-    print("   👋 /setwelcome - Set welcome message")
+    print("   👋 /setwelcome - Set welcome")
     print("   🗑️ /clearwelcome - Clear welcome")
-    print("   👀 /viewwelcome - View welcome")
     print("   ✅ /approve @user - Approve user")
     print("   ❌ /dapprove @user - Remove approval")
-    print("   📋 /approved - List approved users")
     print("=" * 50)
     
     print("\n🚀 Bot is running! Send /start on Telegram\n")
