@@ -195,8 +195,8 @@ async def cmd_start(message: types.Message):
     
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="ADD ME TO YOUR GROUP", url=f"https://t.me/{bot_username}?startgroup=botstart", style="primary", icon_custom_emoji_id=ADD_BTN_EMOJI_ID)],
-        [InlineKeyboardButton(text="SUPPORT", url="https://t.me/midnight_supportt", style="success", icon_custom_emoji_id=SUPPORT_BTN_EMOJI_ID),
-         InlineKeyboardButton(text="CHANNEL", url="https://t.me/midnight_chatclub", style="success", icon_custom_emoji_id=CHANNEL_BTN_EMOJI_ID)],
+        [InlineKeyboardButton(text="SUPPORT", url="https://t.me/midnight_chatclub", style="success", icon_custom_emoji_id=SUPPORT_BTN_EMOJI_ID),
+         InlineKeyboardButton(text="CHANNEL", url="https://t.me/midnight_supportt", style="success", icon_custom_emoji_id=CHANNEL_BTN_EMOJI_ID)],
         [InlineKeyboardButton(text="OWNER", url="https://t.me/light_speedy", style="danger", icon_custom_emoji_id=OWNER_BTN_EMOJI_ID)]
     ])
     
