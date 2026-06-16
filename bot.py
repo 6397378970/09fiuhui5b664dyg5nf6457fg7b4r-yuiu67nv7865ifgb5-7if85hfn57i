@@ -54,9 +54,6 @@ async def cmd_start(message: types.Message):
     owner_mention = format_user_mention(OWNER_ID, "L ɪ ɢ ʜ ᴛ")
     user_mention = format_user_mention(user.id, user.first_name)
     
-    is_auth = is_authorized(user.id)
-    auth_status = "Authorized" if is_auth else "Not Authorized"
-    
     text = (
         f"{EMOJI1} ʜᴇʏ {user_mention}\n\n"
         f"{EMOJI2} ᴛʜɪs ɪs ᴍɪᴅɴɪɢʜᴛ ᴍᴀɴᴀɢᴇ ʙᴏᴛ {EMOJI3}\n\n\n"
