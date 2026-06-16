@@ -182,12 +182,9 @@ async def cmd_start(message: types.Message):
     auth_status = "Authorized" if is_auth else "Not Authorized"
     
     text = (
-        f"{EMOJI1} Hey {user_mention}\n\n"
-        f"{EMOJI2} this is midnight manage bot {EMOJI3}\n\n\n"
-        f"{EMOJI4} powered by : {owner_mention} {POWERED_BY_EMOJI}\n\n"
-        f"{BOT_STATUS_EMOJI} *Bot Status*\n"
-        f"{TOTAL_BOTS_EMOJI} Total Bots: {TOTAL_BOTS}\n"
-        f"{AUTHORIZED_EMOJI} {auth_status}"
+        f"{EMOJI1} ʜᴇʏ {user_mention}\n\n"
+        f"{EMOJI2} ᴛʜɪs ɪs ᴍɪᴅɴɪɢʜᴛ ᴍᴀɴᴀɢᴇ ʙᴏᴛ {EMOJI3}\n\n\n"
+        f"{EMOJI4} Pᴏᴡᴇʀᴇᴅ Bʏ : {owner_mention} {POWERED_BY_EMOJI}\n\n"
     )
     
     bot_info = await main_bot.get_me()
